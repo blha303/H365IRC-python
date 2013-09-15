@@ -222,7 +222,7 @@ class Bot(irc.IRCClient):
     def privmsg(self, user, channel, msg):
         nick, _, host = user.partition('!')
         print msg
-        if msg[0] == "!":
+        if msg[0] == config["prefix"]:
             split = msg.split(' ')
             cmd = msg.split(' ')[0][1:]
             if len(split) > 1:
