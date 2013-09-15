@@ -309,7 +309,11 @@ class BotFactory(protocol.ClientFactory):
 
 
 if __name__ == "__main__":
-
     channel = config["channel"]
     reactor.connectTCP(config["server"], config["port"], BotFactory(channel))
     reactor.run()
+elif __name__ == '__builtin__':
+    application = service.Application('H365IRCBot')
+    channel = config["channel"]
+    ircService = internet.TCPClient(config["server"], config["port"], BotFactory(channel))
+    ircService.setServiceParent(application)
