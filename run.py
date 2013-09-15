@@ -71,7 +71,6 @@ class XML2Dict(object):
 class Bot(irc.IRCClient):
     nickname = config["nickname"]
     username = config["username"]
-    admins = config["admins"]
     lastDj = "Default"
     lastSong = "Default"
     news = "No news."
@@ -93,6 +92,32 @@ class Bot(irc.IRCClient):
         djs = {}
         with open("djs.txt", "w") as f:
             f.write(json.dumps(djs))
+    try:
+        with open("commands.txt") as f:
+            commands = json.loads(f.read())
+    except:
+        commands = {}
+        with open("commands.txt", "w") as f:
+            f.write(json.dumps(commands))
+    try:
+        with open("admins.txt") as f:
+            admins = json.loads(f.read())
+    except:
+        admins = []
+        with open("admins.txt", "w") as f:
+            f.write(json.dumps(admins))
+
+    def checkAdmin(self, user):
+        nick, _, host = user.partition('!')
+        if host.split("@") == "bnc.hive365.co.uk":
+            return True
+        elif user in self.admins:
+            return True
+        else:
+            return False
+
+    def parseCCommand(self, inp, nick):
+        return inp.replace("%user", nick).replace("%song", self.lastSong).replace("%dj", self.lastDj)
 
     def shoutout(self, user, request):
         user = user.encode('base64').strip()
@@ -199,6 +224,10 @@ class Bot(irc.IRCClient):
             f.write(json.dumps(self.songs))
         with open("djs.txt", "w") as f:
             f.write(json.dumps(self.djs))
+        with open("commands.txt", "w") as f:
+            f.write(json.dumps(self.commands))
+        with open("admins.txt", "w") as f:
+            f.write(json.dumps(self.admins))
 
     def signedOn(self):
         self.msg("root", "test test")
@@ -216,7 +245,7 @@ class Bot(irc.IRCClient):
 
     def _send_message(self, msg, target, nick=None):
         if nick:
-            msg = '%s, %s' % (nick, msg)
+            msg = '%s: %s' % (nick, msg)
         self.msg(target, self.uni2str(msg))
 
     def privmsg(self, user, channel, msg):
@@ -236,10 +265,10 @@ class Bot(irc.IRCClient):
                 out = "\x02Current Song:\x02 %s || \x02Choons:\x02 %s \x02Poons:\x02 %s" % (self.lastSong, len(sdata["choons"]), len(sdata["poons"]))
             elif cmd == "news":
                 self._send_message(self.news, channel, nick=nick)
-            elif cmd == "setnews" and user in self.admins:
+            elif cmd == "setnews" and self.checkAdmin(user):
                 self.news = msg.strip()
                 self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, self.status, self.news)))
-            elif cmd == "save" and user in self.admins:
+            elif cmd == "save" and self.checkAdmin(user):
                 self.saveData()
                 self._send_message("done.", channel, nick=nick)
             elif cmd in ["c", "ch", "choon"]:
@@ -292,7 +321,28 @@ class Bot(irc.IRCClient):
                 todayd = ", ".join(self.schedule[day])
                 todayd = todayd.replace("[b]", "\x02").replace("[/b]", "\x0f")
                 self._send_message(todayd, channel)
-                
+            elif cmd in self.commands:
+                self._send_message(self.parseCCommand(self.commands[cmd], nick), channel)
+            elif cmd == "addcmd" and self.checkAdmin(user):
+                tcmd = msg.split(" ")[0]
+                content = " ".join(msg.split(" ")[1:])
+                self.commands[tcmd] = content
+                self._send_message("saved.", channel, nick=nick)
+            elif cmd == "delcmd" and self.checkAdmin(user):
+                try:
+                    self.commands.pop(msg)
+                    self._send_message("done.", channel, nick=nick)
+                except KeyError:
+                    self._send_message("No such custom command.", channel, nick=nick)
+            elif cmd == "addadmin" and self.checkAdmin(user):
+                admins.append(msg)
+                self._send_message('done.', channel, nick=nick)
+            elif cmd == "deladmin" and self.checkAdmin(user):
+                try:
+                    admins.pop(msg)
+                    self._send_message("done.", channel, nick=nick)
+                except KeyError:
+                    self._send_message("No such admin entry.", channel, nick=nick)
 
 class BotFactory(protocol.ClientFactory):
     protocol = Bot
