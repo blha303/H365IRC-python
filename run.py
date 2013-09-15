@@ -277,26 +277,35 @@ class Bot(irc.IRCClient):
                     sdata["choons"].append(user)
                     self.songs[self.lastSong] = sdata
                     self.choon(nick)
-                self._send_message("%s Thinks %s is a banging choon!" % (nick, self.lastSong), channel)
+                    self._send_message("%s Thinks %s is a banging choon!" % (nick, self.lastSong), channel)
+                else:
+                    self._send_message("You've already voted on this song!", nick)
             elif cmd in ["p", "poon"]:
                 sdata = self.songs[self.lastSong]
                 if not user in sdata["poons"]:
                     sdata["poons"].append(user)
                     self.songs[self.lastSong] = sdata
                     self.poon(nick)
-                self._send_message("%s Thinks %s is a bit of a 'naff poon!" % (nick, self.lastSong), channel)
+                    self._send_message("%s Thinks %s is a bit of a 'naff poon!" % (nick, self.lastSong), channel)
+                else:
+                    self._send_message("You've already voted on this song!", nick)
             elif cmd == "djftw":
                 ddata = self.djs[self.lastDj]
                 if not user in ddata["ftw"]:
                     ddata["ftw"].append(user)
                     self.djs[self.lastDj] = ddata
                     self.djftw(nick)
-                self._send_message("%s Thinks %s is a banging DJ!" % (nick, self.lastDj), channel)
+                    self._send_message("%s Thinks %s is a banging DJ!" % (nick, self.lastDj), channel)
+                else:
+                    self._send_message("You've already voted on this DJ!", nick)
             elif cmd == "djftl":
                 ddata = self.djs[self.lastDj]
                 if not user in ddata["ftl"]:
                     ddata["ftl"].append(user)
                     self.djs[self.lastDj] = ddata
+                    self._send_message("%s Thinks %s is a bad DJ!" % (nick, self.lastDj), channel)
+                else:
+                    self._send_message("You've already voted on this DJ!", nick)
             elif cmd == "shoutout":
                 resp = self.shoutout(nick, msg)
                 if resp:
