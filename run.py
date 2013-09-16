@@ -16,6 +16,7 @@ def wopen(url):
     return opener.open(request).read()
 
 # https://pypi.python.org/pypi/XML2Dict/
+# Here because the PyPI installer is broken (Missing file)
 class XML2Dict(object):
     def __init__(self, coding='UTF-8'):
         self._coding = coding
@@ -109,7 +110,7 @@ class Bot(irc.IRCClient):
 
     def checkAdmin(self, user):
         nick, _, host = user.partition('!')
-        if host.split("@") == "bnc.hive365.co.uk":
+        if host.split("@")[1] == "bnc.hive365.co.uk":
             return True
         elif user in self.admins:
             return True
@@ -117,13 +118,22 @@ class Bot(irc.IRCClient):
             return False
 
     def parseCCommand(self, inp, nick):
-        return inp.replace("%user", nick).replace("%song", self.lastSong).replace("%dj", self.lastDj)
+        def actualParse(input):
+            return input.replace("%user", nick).replace("%song", self.lastSong).replace("%dj", self.lastDj).replace("[b]", "\x02").replace("[/b]", "\x0f")
+        if "\\n" in inp:
+            inp = inp.split("\\n")
+            newlist = []
+            for i in inp:
+                newlist.append(actualParse(i))
+            return newlist
+        else:
+            return actualParse(inp)
 
+# Vote commands
     def shoutout(self, user, request):
         user = user.encode('base64').strip()
         request = request.encode('base64').strip()
         wurl = self.furl.format("shoutout") + "?n=" + user + "&s=" + request + "&host=" + config["serverid"].encode('base64').strip()
-        print wurl
         try:
             resp = wopen(wurl)
             return resp
@@ -133,7 +143,6 @@ class Bot(irc.IRCClient):
     def choon(self, user):
         user = user.encode('base64').strip()
         wurl = self.furl.format("song_rate") + "?n=" + user + "&t=3&host=" + config["serverid"].encode('base64').strip()
-        print wurl
         try:
             resp = wopen(wurl)
             if resp == "Song Rating Submitted, Thanks!":
@@ -146,7 +155,6 @@ class Bot(irc.IRCClient):
     def poon(self, user):
         user = user.encode('base64').strip()
         wurl = self.furl.format("song_rate") + "?n=" + user + "&t=4&host=" + config["serverid"].encode('base64').strip()
-        print wurl
         try:
             resp = wopen(wurl)
             print resp
@@ -157,7 +165,6 @@ class Bot(irc.IRCClient):
         user = user.encode('base64').strip()
         request = self.lastDj.encode('base64').strip()
         wurl = self.furl.format("djrate") + "?n=" + user + "&s=" + request + "&host=" + config["serverid"].encode('base64').strip()
-        print wurl
         try:
             resp = wopen(wurl)
             print resp
@@ -168,7 +175,6 @@ class Bot(irc.IRCClient):
         user = user.encode('base64').strip()
         request = request.encode('base64').strip()
         wurl = self.furl.format("request") + "?n=" + user + "&s=" + request + "&host=" + config["serverid"].encode('base64').strip()
-        print wurl
         try:
             resp = wopen(wurl)
             return resp
@@ -183,8 +189,13 @@ class Bot(irc.IRCClient):
         else:
             raise Exception("Not unicode or string")
 
+# Update function, runs every two seconds
     def updateData(self):
-        data = json.loads(wopen("http://data.hive365.co.uk/stream/info.php"))["info"]
+        try:
+            data = json.loads(wopen("http://data.hive365.co.uk/stream/info.php"))["info"]
+        except:
+            print "Update failed."
+            return
         #with open("tempdata.txt") as f:
         #    data = json.loads(f.read())["info"]
         msg = None
@@ -218,7 +229,8 @@ class Bot(irc.IRCClient):
                 self.topic(config["channel"], topic=self.uni2str(oldtopic.replace(online, offline)))
         if msg:
             self._send_message(msg, config["channel"])
-    
+
+# Save function, runs every ten seconds
     def saveData(self):
         with open("songs.txt", "w") as f:
             f.write(json.dumps(self.songs))
@@ -229,6 +241,7 @@ class Bot(irc.IRCClient):
         with open("admins.txt", "w") as f:
             f.write(json.dumps(self.admins))
 
+# Startup function, run on first connect
     def signedOn(self):
         self.msg("root", "test test")
         self.msg("root", "connect quakenet")
@@ -247,15 +260,20 @@ class Bot(irc.IRCClient):
         if nick:
             msg = '%s: %s' % (nick, msg)
         self.msg(target, self.uni2str(msg))
+        print "<%s> " % self.nickname + msg.encode('ascii', 'ignore')
 
     def privmsg(self, user, channel, msg):
         nick, _, host = user.partition('!')
-        print msg
+        print "<%s> " % nick + msg
         if msg[0] == config["prefix"]:
             split = msg.split(' ')
             cmd = msg.split(' ')[0][1:]
             if len(split) > 1:
                 msg = " ".join(msg.split(' ')[1:])
+            if cmd in ["listen", "stream"]:
+                self._send_message("\x02Webplayer:\x02 http://hive365.co.uk/web_player/", channel, nick=nick)
+                self._send_message("\x02WinAmp:\x02 http://hive365.co.uk/players/playlist.pls", channel, nick=nick)
+                self._send_message("\x02Website:\x02 http://hive365.co.uk/", channel, nick=nick)
             if cmd == "dj":
                 ddata = self.djs[self.lastDj]
                 out = "\x02Current DJ:\x02 %s \x02FTW's:\x02 %s \x02FTL's:\x02 %s" % (self.lastDj, len(ddata["ftw"]), len(ddata["ftl"]))
@@ -265,12 +283,6 @@ class Bot(irc.IRCClient):
                 out = "\x02Current Song:\x02 %s || \x02Choons:\x02 %s \x02Poons:\x02 %s" % (self.lastSong, len(sdata["choons"]), len(sdata["poons"]))
             elif cmd == "news":
                 self._send_message(self.news, channel, nick=nick)
-            elif cmd == "setnews" and self.checkAdmin(user):
-                self.news = msg.strip()
-                self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, self.status, self.news)))
-            elif cmd == "save" and self.checkAdmin(user):
-                self.saveData()
-                self._send_message("done.", channel, nick=nick)
             elif cmd in ["c", "ch", "choon"]:
                 sdata = self.songs[self.lastSong]
                 if not user in sdata["choons"]:
@@ -330,8 +342,14 @@ class Bot(irc.IRCClient):
                 todayd = ", ".join(self.schedule[day])
                 todayd = todayd.replace("[b]", "\x02").replace("[/b]", "\x0f")
                 self._send_message(todayd, channel)
+            #Custom commands
             elif cmd in self.commands:
-                self._send_message(self.parseCCommand(self.commands[cmd], nick), channel)
+                ccmd = self.parseCCommand(self.commands[cmd], nick)
+                if type(ccmd) is list:
+                    for i in ccmd:
+                        self._send_message(i, channel)
+                else:
+                    self._send_message(ccmd, channel)
             elif cmd == "addcmd" and self.checkAdmin(user):
                 tcmd = msg.split(" ")[0]
                 content = " ".join(msg.split(" ")[1:])
@@ -343,6 +361,7 @@ class Bot(irc.IRCClient):
                     self._send_message("done.", channel, nick=nick)
                 except KeyError:
                     self._send_message("No such custom command.", channel, nick=nick)
+            # Admin commands
             elif cmd == "addadmin" and self.checkAdmin(user):
                 admins.append(msg)
                 self._send_message('done.', channel, nick=nick)
@@ -352,6 +371,12 @@ class Bot(irc.IRCClient):
                     self._send_message("done.", channel, nick=nick)
                 except KeyError:
                     self._send_message("No such admin entry.", channel, nick=nick)
+            elif cmd == "setnews" and self.checkAdmin(user):
+                self.news = msg.strip()
+                self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, self.status, self.news)))
+            elif cmd == "save" and self.checkAdmin(user):
+                self.saveData()
+                self._send_message("done.", channel, nick=nick)
 
 class BotFactory(protocol.ClientFactory):
     protocol = Bot

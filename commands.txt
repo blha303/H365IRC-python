@@ -1,1 +1,1 @@
-{"np": "Now playing: %song (DJ: %dj)", "sax": "%user pulls out their !"}
+{"np": "Now playing: %song (DJ: %dj)", "dances": "%user dances along to %song!", "sax": "%user pulls out their sax!", "listena": "[b]Webplayer:[/b] http://hive365.co.uk/web_player/\\n[b]WinAmp:[/b] bla"}
