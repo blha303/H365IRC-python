@@ -1,12 +1,15 @@
 from twisted.words.protocols import irc
 from twisted.internet import protocol, task, reactor
-import yaml, urllib2, json, sys, unicodedata, datetime, time
+import yaml, urllib2, json, sys, unicodedata, time, random
 import xml.etree.ElementTree as ET
 
 with open("config.yml") as file:
     config = yaml.load(file.read())
-online = "\x033Online\x0f"
-offline = "\x034Offline\x0f"
+colors = ["\x032", "\x033", "\x034", "\x035", "\x036",
+          "\x037", "\x038", "\x039", "\x0310", "\x0311", "\x0312", "\x0313",
+          "\x0314", "\x0315"]
+online = "\x039\x02Online\x0f"
+offline = "\x034\x02Offline\x0f"
 ua_chrome = 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.4 (KHTML, ' \
             'like Gecko) Chrome/22.0.1229.79 Safari/537.4'
 def wopen(url):
@@ -109,6 +112,12 @@ class Bot(irc.IRCClient):
         admins = []
         with open("admins.txt", "w") as f:
             f.write(json.dumps(admins))
+    try:
+        with open("news.txt") as f:
+            news = f.read().strip()
+    except:
+        with open("news.txt", "w") as f:
+            f.write(news)
 
     def checkAdmin(self, user):
         nick, _, host = user.partition('!')
@@ -224,8 +233,9 @@ class Bot(irc.IRCClient):
             if self.lastSong != data["artist_song"]:
                 # New song!
                 if not data["artist_song"] in self.songs:
-                    self.songs[data["artist_song"]] = {'choons': [], 'poons': []}
+                    self.songs[data["artist_song"]] = {'choons': [], 'poons': [], 'plays': []}
                 sdata = self.songs[data["artist_song"]]
+                sdata["plays"].append(time.time())
                 msg = "\x02New Song:\x02 %s || \x02Choons:\x02 %s \x02Poons:\x02 %s" % (data["artist_song"], len(sdata["choons"]), len(sdata["poons"]))
                 self.lastSong = data["artist_song"]
 #            if not self.lastDj in str(self.topic(config["channel"])):
@@ -248,6 +258,8 @@ class Bot(irc.IRCClient):
             f.write(json.dumps(self.commands))
         with open("admins.txt", "w") as f:
             f.write(json.dumps(self.admins))
+        with open("news.txt", "w") as f:
+            f.write(self.news)
 
 # Startup function, run on first connect
     def signedOn(self):
@@ -270,11 +282,14 @@ class Bot(irc.IRCClient):
         self.msg(target, self.uni2str(msg))
         print "<%s> " % self.nickname + msg.encode('ascii', 'ignore')
 
+    def _notice(self, msg, target):
+        self.notice(target, self.uni2str(msg))
+        print "-%s- > %s: %s" % (self.nickname, target, msg.encode('ascii', 'ignore'))
+
     def privmsg(self, user, channel, msg):
         nick, _, host = user.partition('!')
         self.lastactivity = time.time()
         if self.quiet:
-            self._send_message("Noticed activity in channel, turning on notifications.", channel)
             self.quiet = False
         print "<%s> " % nick + msg
         # From CloudBot http://git.io/5IWsPg
@@ -294,7 +309,8 @@ class Bot(irc.IRCClient):
                 msg = " ".join(split[1:])
             commands = ["listen", "stream", "dj", "song", "news", "choon", "poon", "djftw",
                         "djftl", "shoutout", "request", "schedule", "timetable", "tt",
-                        "addcmd", "delcmd", "addadmin", "deladmin", "setnews", "save", "utime"]
+                        "addcmd", "delcmd", "addadmin", "deladmin", "setnews", "save",
+                        "utime", "glowsticks", "topicfix"]
             for i in self.commands:
                 commands.append(i)
             matches = match_command(cmd, commands)
@@ -303,9 +319,9 @@ class Bot(irc.IRCClient):
             elif matches in commands:
                 cmd = matches
             if cmd in ["listen", "stream"]:
-                self._send_message("\x02Webplayer:\x02 http://hive365.co.uk/web_player/", channel, nick=nick)
-                self._send_message("\x02WinAmp:\x02 http://hive365.co.uk/players/playlist.pls", channel, nick=nick)
-                self._send_message("\x02Website:\x02 http://hive365.co.uk/", channel, nick=nick)
+                self._notice("\x02Webplayer:\x02 http://hive365.co.uk/web_player/", nick)
+                self._notice("\x02WinAmp:\x02 http://hive365.co.uk/players/playlist.pls", nick)
+                self._notice("\x02Website:\x02 http://hive365.co.uk/", nick)
             if cmd in self.commands:
                 ccmd = self.parseCCommand(self.commands[cmd], nick)
                 if type(ccmd) is list:
@@ -330,7 +346,7 @@ class Bot(irc.IRCClient):
                     self.choon(nick)
                     self._send_message("%s Thinks %s is a banging choon!" % (nick, self.lastSong), channel)
                 else:
-                    self._send_message("You've already voted on this song!", nick)
+                    self._notice("You've already voted on this song!", nick)
             elif cmd == "poon":
                 sdata = self.songs[self.lastSong]
                 if not user in sdata["poons"]:
@@ -339,7 +355,7 @@ class Bot(irc.IRCClient):
                     self.poon(nick)
                     self._send_message("%s Thinks %s is a bit of a 'naff poon!" % (nick, self.lastSong), channel)
                 else:
-                    self._send_message("You've already voted on this song!", nick)
+                    self._notice("You've already voted on this song!", nick)
             elif cmd == "djftw":
                 ddata = self.djs[self.lastDj]
                 if not user in ddata["ftw"]:
@@ -348,7 +364,7 @@ class Bot(irc.IRCClient):
                     self.djftw(nick)
                     self._send_message("%s Thinks %s is a banging DJ!" % (nick, self.lastDj), channel)
                 else:
-                    self._send_message("You've already voted on this DJ!", nick)
+                    self._notice("You've already voted on this DJ!", nick)
             elif cmd == "djftl":
                 ddata = self.djs[self.lastDj]
                 if not user in ddata["ftl"]:
@@ -356,7 +372,7 @@ class Bot(irc.IRCClient):
                     self.djs[self.lastDj] = ddata
                     self._send_message("%s Thinks %s is a bad DJ!" % (nick, self.lastDj), channel)
                 else:
-                    self._send_message("You've already voted on this DJ!", nick)
+                    self._notice("You've already voted on this DJ!", nick)
             elif cmd == "shoutout":
                 resp = self.shoutout(nick, msg)
                 if resp:
@@ -381,7 +397,7 @@ class Bot(irc.IRCClient):
                 if msg.lower() in ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]:
                     day = msg.lower()
                 else:
-                    day = datetime.datetime.today().strftime("%A").lower()
+                    day = time.strftime("%A", time.gmtime()).lower()
                 todayd = ", ".join(self.schedule[day])
                 todayd = todayd.replace("[b]", "\x02").replace("[/b]", "\x0f")
                 self._send_message(todayd, channel)
@@ -391,29 +407,39 @@ class Bot(irc.IRCClient):
                 tcmd = msg.split(" ")[0]
                 content = " ".join(msg.split(" ")[1:])
                 self.commands[tcmd] = content
-                self._send_message("saved.", channel, nick=nick)
+                self._notice("saved.", nick)
             elif cmd == "delcmd" and self.checkAdmin(user):
                 try:
                     self.commands.pop(msg)
-                    self._send_message("done.", channel, nick=nick)
+                    self._notice("done.", nick)
                 except KeyError:
-                    self._send_message("No such custom command.", channel, nick=nick)
+                    self._notice("No such custom command.", nick)
             # Admin commands
             elif cmd == "addadmin" and self.checkAdmin(user):
                 admins.append(msg)
-                self._send_message('done.', channel, nick=nick)
+                self._notice('done.', nick)
             elif cmd == "deladmin" and self.checkAdmin(user):
                 try:
                     admins.pop(msg)
-                    self._send_message("done.", channel, nick=nick)
+                    self._notice("done.", nick)
                 except KeyError:
-                    self._send_message("No such admin entry.", channel, nick=nick)
+                    self._notice("No such admin entry.", nick)
             elif cmd == "setnews" and self.checkAdmin(user):
                 self.news = msg.strip()
                 self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, self.status, self.news)))
             elif cmd == "save" and self.checkAdmin(user):
                 self.saveData()
-                self._send_message("done.", channel, nick=nick)
+                self._notice("done.", nick)
+            elif cmd == "fuckyou":
+                self._send_message(self.parseCCommand("No, fuck YOU, %user", nick), channel)
+            elif cmd == "glowsticks":
+                msga = ""
+                if msg:
+                    for i in msg:
+                        msga += random.choice(colors) + i
+                self._send_message(msga, channel, nick=nick)
+            elif cmd == "topicfix" and self.checkAdmin(user):
+                self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, self.status, self.news)))
 
     def utime(self, input):
         timezones = {"Pacific/Midway": -11, "Pacific/Niue": -11, "Pacific/Pago_Pago": -11, "Pacific/Samoa": -11, "US/Samoa": -11, 
