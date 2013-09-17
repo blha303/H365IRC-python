@@ -1,5 +1,6 @@
 from twisted.words.protocols import irc
 from twisted.internet import protocol, task, reactor
+from twisted.application import internet, service
 import yaml, urllib2, json, sys, unicodedata, time, random
 import xml.etree.ElementTree as ET
 
@@ -235,6 +236,8 @@ class Bot(irc.IRCClient):
                 if not data["artist_song"] in self.songs:
                     self.songs[data["artist_song"]] = {'choons': [], 'poons': [], 'plays': []}
                 sdata = self.songs[data["artist_song"]]
+                if not "plays" in sdata:
+                    sdata["plays"] = []
                 sdata["plays"].append(time.time())
                 msg = "\x02New Song:\x02 %s || \x02Choons:\x02 %s \x02Poons:\x02 %s" % (data["artist_song"], len(sdata["choons"]), len(sdata["poons"]))
                 self.lastSong = data["artist_song"]
@@ -336,6 +339,7 @@ class Bot(irc.IRCClient):
             elif cmd == "song":
                 sdata = self.songs[self.lastSong]
                 out = "\x02Current Song:\x02 %s || \x02Choons:\x02 %s \x02Poons:\x02 %s" % (self.lastSong, len(sdata["choons"]), len(sdata["poons"]))
+                self._send_message(out, channel, nick=nick)
             elif cmd == "news":
                 self._send_message(self.news, channel, nick=nick)
             elif cmd == "choon":
