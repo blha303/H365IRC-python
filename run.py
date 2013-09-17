@@ -76,6 +76,7 @@ class XML2Dict(object):
 class Bot(irc.IRCClient):
     nickname = config["nickname"]
     username = config["username"]
+    password = config["server_password"]
     lastDj = "Default"
     lastSong = "Default"
     news = "No news."
@@ -266,8 +267,6 @@ class Bot(irc.IRCClient):
 
 # Startup function, run on first connect
     def signedOn(self):
-        self.msg("root", "test test")
-        self.msg("root", "connect quakenet")
         self.join(self.factory.channel)
         task.LoopingCall(self.updateData).start(2.0)
         task.LoopingCall(self.saveData).start(10.0)
