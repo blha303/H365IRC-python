@@ -5,3 +5,4 @@ server: localhost
 port: 6667
 admins: ["blha303!~blha303@is.not.really.a.timelord.pw", "H365|TameTimmah!tametimmah@bnc.hive365.co.uk"]
 serverid: "QuakeNet || #b3h365 TESTING"
+server_password: ""
