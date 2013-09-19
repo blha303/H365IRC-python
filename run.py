@@ -253,6 +253,7 @@ class Bot(irc.IRCClient):
             return
         elif self.quiet == True:
             return
+        self.updateData()
         try:
             data = json.loads(wopen("http://data.hive365.co.uk/stream/info.php"))["info"]
         except:
