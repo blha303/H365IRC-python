@@ -1,0 +1,27 @@
+2013-09-19-11:28:17 #b3h365: <Hive365Test> New Song: Avicii - Wake Me Up || Choons: 0 Poons: 0
+2013-09-19-11:28:41 #b3h365: <blha303> let's see if that's fixed
+2013-09-19-11:29:21 #b3h365: <blha303> !ignored
+2013-09-19-11:29:21 #b3h365: <Hive365Test> 
+2013-09-19-11:30:10 #b3h365: <Hive365Test> New Song: Avicii - Wake Me Up || Choons: 0 Poons: 0
+2013-09-19-11:30:20 #b3h365: <blha303> !ignore nobody
+2013-09-19-11:30:20 #b3h365: <Hive365Test> blha303: OK, I'm ignoring that person now.
+2013-09-19-11:30:26 #b3h365: <blha303> !ignored
+2013-09-19-11:30:26 #b3h365: <Hive365Test> nobody
+2013-09-19-11:31:16 #b3h365: <Hive365Test> New Song: Naughty Boy ft Sam Smith - La La La || Choons: 0 Poons: 0
+2013-09-19-11:31:22 #b3h365: <blha303> !unignore nobody
+2013-09-19-11:32:38 #b3h365: <Hive365Test> New Song: Naughty Boy ft Sam Smith - La La La || Choons: 0 Poons: 0
+2013-09-19-11:32:52 #b3h365: <blha303> !ignored
+2013-09-19-11:32:52 #b3h365: <Hive365Test> 
+2013-09-19-11:32:58 #b3h365: <blha303> !ignore bla
+2013-09-19-11:32:58 #b3h365: <Hive365Test> blha303: OK, I'm ignoring that person now.
+2013-09-19-11:33:04 #b3h365: <blha303> !unignore bla
+2013-09-19-11:33:04 #b3h365: <Hive365Test> blha303: Ok, I'm not ignoring that person anymore.
+2013-09-19-11:34:48 #b3h365: <Hive365Test> New Song: Chris Brown - Don't Wake Me Up || Choons: 0 Poons: 0
+2013-09-19-11:38:16 #b3h365: <Hive365Test> New Song: Maroon 5 Feat. Wiz Khalifa - Payphone || Choons: 0 Poons: 0
+2013-09-19-11:42:04 #b3h365: <Hive365Test> New Song: Akcent - Kylie (Dendix Bootleg Mix) || Choons: 0 Poons: 0
+2013-09-19-11:48:00 #b3h365: <Hive365Test> New Song: Bueno Clinic - Away ( Cherry Coke Remix ) || Choons: 0 Poons: 0
+2013-09-19-11:52:38 #b3h365: <Hive365Test> Noticed inactivity in channel, turning off notifications.
+2013-09-19-11:54:56 #b3h365: <blha303> and it works!
+2013-09-19-11:54:58 #b3h365: <Hive365Test> New Song: Prototyperaptor - Turn Based (Original Mix) || Choons: 0 Poons: 0
+2013-09-19-11:55:04 #b3h365: <blha303> and it'll still update topic
+2013-09-19-11:55:06 #b3h365: <blha303> awesome

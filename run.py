@@ -1,5 +1,6 @@
 from twisted.words.protocols import irc
 from twisted.internet import protocol, task, reactor
+from twisted.application import internet, service
 import yaml, urllib2, json, sys, unicodedata, time, random
 import xml.etree.ElementTree as ET
 
@@ -81,6 +82,7 @@ class Bot(irc.IRCClient):
     schedule = None
     status = online
     quiet = False
+    permaquiet = False
     lastactivity = int(time.time())
     topicfmt = "Welcome to http://hive365.co.uk | DJ: %s | Stream Status: %s | News: %s"
     furl = "http://hive365.co.uk/plugin/{}.php"
@@ -113,19 +115,44 @@ class Bot(irc.IRCClient):
         with open("admins.txt", "w") as f:
             f.write(json.dumps(admins))
     try:
+        with open("ignore.txt") as f:
+            ignore = json.loads(f.read())
+    except:
+        ignore = []
+        with open("ignore.txt", "w") as f:
+            f.write(json.dumps(ignore))
+    try:
         with open("news.txt") as f:
             news = f.read().strip()
     except:
         with open("news.txt", "w") as f:
             f.write(news)
 
+# Startup function, run on first connect
+    def signedOn(self):
+        self.msg("root", "test test")
+        self.msg("root", "connect quakenet")
+        self.join(self.factory.channel)
+        task.LoopingCall(self.updateData).start(2.0)
+        task.LoopingCall(self.saveData).start(10.0)
+        if not self.lastDj in self.djs:
+            self.djs[self.lastDj] = {'ftw': [], 'ftl': []}
+        self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, online, self.news)))
+        print "Signed on as %s." % (self.nickname,)
+
+    def joined(self, channel):
+        print "Joined %s." % (channel,)
+
+# Utils
     def checkAdmin(self, user):
         nick, _, host = user.partition('!')
+        whois = self.whois(nick)
         if host.split("@")[1] == "bnc.hive365.co.uk":
             return True
         elif user in self.admins:
             return True
         else:
+            print str(whois)
             return False
 
     def parseCCommand(self, inp, nick):
@@ -139,6 +166,32 @@ class Bot(irc.IRCClient):
             return newlist
         else:
             return actualParse(inp)
+
+    def uni2str(self, inp):
+        if isinstance(inp, unicode):
+            return unicodedata.normalize('NFKD', inp).encode('ascii', 'ignore')
+        elif isinstance(inp, str):
+            return inp
+        else:
+            raise Exception("Not unicode or string")
+
+    def _send_message(self, msg, target, nick=None):
+        if nick:
+            msg = '%s: %s' % (nick, msg)
+        self.msg(target, self.uni2str(msg))
+        self.log("<%s> %s" % (self.nickname, msg))
+
+    def _notice(self, msg, target):
+        self.notice(target, self.uni2str(msg))
+        print "-%s- > %s: %s" % (self.nickname, target, msg.encode('ascii', 'ignore'))
+
+    def log(self, msg, channel=None):
+        if not channel:
+            channel = self.factory.channel
+        out = "%s %s: %s" % (time.strftime("%Y-%m-%d-%H:%M:%S"), channel, msg)
+        with open("log.txt", "a") as f:
+            f.write(out + "\n")
+        print out
 
 # Vote commands
     def shoutout(self, user, request):
@@ -192,21 +245,13 @@ class Bot(irc.IRCClient):
         except Exception as e:
             return "An Error Occured: " + str(e)
 
-    def uni2str(self, inp):
-        if isinstance(inp, unicode):
-            return unicodedata.normalize('NFKD', inp).encode('ascii', 'ignore')
-        elif isinstance(inp, str):
-            return inp
-        else:
-            raise Exception("Not unicode or string")
-
 # Update function, runs every two seconds
     def updateData(self):
-        if self.quiet:
-            return
-        if (int(time.time()) - self.lastactivity) > 1200:
+        if (int(time.time()) - self.lastactivity) > 1200 and self.quiet == False:
             self._send_message("Noticed inactivity in channel, turning off notifications.", config["channel"])
             self.quiet = True
+            return
+        elif self.quiet == True:
             return
         try:
             data = json.loads(wopen("http://data.hive365.co.uk/stream/info.php"))["info"]
@@ -216,11 +261,6 @@ class Bot(irc.IRCClient):
         #with open("tempdata.txt") as f:
         #    data = json.loads(f.read())["info"]
         msg = None
-#        statusmsg = ""
-#        for i in data:
-#            statusmsg += data[i] + ", "
-#        statusmsg += self.lastDj + ", " + self.lastSong
-#        print statusmsg
         if data["status"] == "ON AIR":
             if self.lastDj != data["title"]:
                 # New DJ!
@@ -235,6 +275,8 @@ class Bot(irc.IRCClient):
                 if not data["artist_song"] in self.songs:
                     self.songs[data["artist_song"]] = {'choons': [], 'poons': [], 'plays': []}
                 sdata = self.songs[data["artist_song"]]
+                if not "plays" in sdata:
+                    sdata["plays"] = []
                 sdata["plays"].append(time.time())
                 msg = "\x02New Song:\x02 %s || \x02Choons:\x02 %s \x02Poons:\x02 %s" % (data["artist_song"], len(sdata["choons"]), len(sdata["poons"]))
                 self.lastSong = data["artist_song"]
@@ -245,7 +287,7 @@ class Bot(irc.IRCClient):
             if not offline in topica and online in topica:
                 oldtopic = self.topic(config["channel"])
                 self.topic(config["channel"], topic=self.uni2str(oldtopic.replace(online, offline)))
-        if msg:
+        if msg and not self.quiet:
             self._send_message(msg, config["channel"])
 
 # Save function, runs every ten seconds
@@ -261,37 +303,17 @@ class Bot(irc.IRCClient):
         with open("news.txt", "w") as f:
             f.write(self.news)
 
-# Startup function, run on first connect
-    def signedOn(self):
-        self.msg("root", "test test")
-        self.msg("root", "connect quakenet")
-        self.join(self.factory.channel)
-        task.LoopingCall(self.updateData).start(2.0)
-        task.LoopingCall(self.saveData).start(10.0)
-        if not self.lastDj in self.djs:
-            self.djs[self.lastDj] = {'ftw': [], 'ftl': []}
-        self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, online, self.news)))
-        print "Signed on as %s." % (self.nickname,)
-
-    def joined(self, channel):
-        print "Joined %s." % (channel,)
-
-    def _send_message(self, msg, target, nick=None):
-        if nick:
-            msg = '%s: %s' % (nick, msg)
-        self.msg(target, self.uni2str(msg))
-        print "<%s> " % self.nickname + msg.encode('ascii', 'ignore')
-
-    def _notice(self, msg, target):
-        self.notice(target, self.uni2str(msg))
-        print "-%s- > %s: %s" % (self.nickname, target, msg.encode('ascii', 'ignore'))
-
     def privmsg(self, user, channel, msg):
         nick, _, host = user.partition('!')
-        self.lastactivity = time.time()
-        if self.quiet:
+        self.log("<%s> " % nick + msg)
+        if nick in self.ignore or user in self.ignore or host in self.ignore:
+            return
+        if self.quiet and not self.permaquiet:
             self.quiet = False
-        print "<%s> " % nick + msg
+            self.lastactivity = time.time()
+        elif self.permaquiet:
+            if not msg[1:] in ["unquiet", "speak", "youcantalk"] and not self.checkAdmin(user):
+                return
         # From CloudBot http://git.io/5IWsPg
         def match_command(command, commands):
             # do some fuzzy matching
@@ -307,10 +329,14 @@ class Bot(irc.IRCClient):
             msg = ""
             if len(split) > 1:
                 msg = " ".join(split[1:])
+            if cmd == "s":
+                cmd = "shoutout"
             commands = ["listen", "stream", "dj", "song", "news", "choon", "poon", "djftw",
                         "djftl", "shoutout", "request", "schedule", "timetable", "tt",
                         "addcmd", "delcmd", "addadmin", "deladmin", "setnews", "save",
-                        "utime", "glowsticks", "topicfix"]
+                        "utime", "glowsticks", "topicfix", "op", "deop", "voice", "devoice",
+                        "kick", "ban", "quiet", "shutup", "shhhhhh", "unquiet", "speak",
+                        "youcantalk", "ignore", "ignored"]
             for i in self.commands:
                 commands.append(i)
             matches = match_command(cmd, commands)
@@ -440,6 +466,41 @@ class Bot(irc.IRCClient):
                 self._send_message(msga, channel, nick=nick)
             elif cmd == "topicfix" and self.checkAdmin(user):
                 self.topic(config["channel"], topic=self.uni2str(self.topicfmt % (self.lastDj, self.status, self.news)))
+            elif cmd == "op" and self.checkAdmin(user):
+                self.mode(self.factory.channel, True, "o", user=msg)
+            elif cmd == "deop" and self.checkAdmin(user):
+                self.mode(self.factory.channel, False, "o", user=msg)
+            elif cmd == "voice" and self.checkAdmin(user):
+                self.mode(self.factory.channel, True, "v", user=msg)
+            elif cmd == "devoice" and self.checkAdmin(user):
+                self.mode(self.factory.channel, False, "v", user=msg)
+            elif cmd == "kick" and self.checkAdmin(user):
+                self.kick(self.factory.channel, msg, reason="Requested by " + nick)
+            elif cmd == "ban" and self.checkAdmin(user):
+                self.kick(self.factory.channel, msg, reason="Requested by " + nick)
+                self.mode(self.factory.channel, True, "b", user=msg)
+            elif cmd == "unban" and self.checkAdmin(user):
+                self.mode(self.factory.channel, False, "b", user=msg)
+            elif cmd in ["quiet", "shutup", "shhhhhh"]:
+                self.quiet = True
+                self.permaquiet = True
+                self._send_message("OK, I'll be quiet.", channel, nick=nick)
+            elif cmd in ["unquiet", "speak", "youcantalk"]:
+                self.quiet = False
+                self.permaquiet = False
+                self._send_message("Thanks :)", channel, nick=nick)
+            elif cmd == "ignore" and self.checkAdmin(user):
+                self.ignore.append(msg)
+                self._send_message("OK, I'm ignoring that person now.", channel, nick=nick)
+            elif cmd == "unignore" and self.checkAdmin(user):
+                try:
+                    self.ignore.pop(self.ignore.index(msg))
+                    self._send_message("Ok, I'm not ignoring that person anymore.", channel, nick=nick)
+                except KeyError:
+                    self._send_message("I wasn't ignoring that person! Try !ignored to see the ignored list.", channel, nick=nick)
+            elif cmd == "ignored" and self.checkAdmin(user):
+                self._send_message("; ".join(self.ignore), nick)
+                
 
     def utime(self, input):
         timezones = {"Pacific/Midway": -11, "Pacific/Niue": -11, "Pacific/Pago_Pago": -11, "Pacific/Samoa": -11, "US/Samoa": -11, 
