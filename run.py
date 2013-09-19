@@ -362,6 +362,7 @@ class Bot(irc.IRCClient):
             elif cmd == "song":
                 sdata = self.songs[self.lastSong]
                 out = "\x02Current Song:\x02 %s || \x02Choons:\x02 %s \x02Poons:\x02 %s" % (self.lastSong, len(sdata["choons"]), len(sdata["poons"]))
+                self._send_message(out, channel, nick=nick)
             elif cmd == "news":
                 self._send_message(self.news, channel, nick=nick)
             elif cmd == "choon":
