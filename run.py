@@ -253,7 +253,6 @@ class Bot(irc.IRCClient):
             return
         elif self.quiet == True:
             return
-        self.updateData()
         try:
             data = json.loads(wopen("http://data.hive365.co.uk/stream/info.php"))["info"]
         except:
@@ -315,6 +314,7 @@ class Bot(irc.IRCClient):
         elif self.permaquiet:
             if not msg[1:] in ["unquiet", "speak", "youcantalk"] and not self.checkAdmin(user):
                 return
+        self.updateData()
         # From CloudBot http://git.io/5IWsPg
         def match_command(command, commands):
             # do some fuzzy matching

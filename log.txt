@@ -25,3 +25,11 @@
 2013-09-19-11:54:58 #b3h365: <Hive365Test> New Song: Prototyperaptor - Turn Based (Original Mix) || Choons: 0 Poons: 0
 2013-09-19-11:55:04 #b3h365: <blha303> and it'll still update topic
 2013-09-19-11:55:06 #b3h365: <blha303> awesome
+2013-09-20-00:23:57 #hive365: <blha303> whoa
+2013-09-20-00:24:03 #hive365: <blha303> maybe i shoulda tested it
+2013-09-20-00:25:32 #hive365: <Hive365Test> New Song: The Saturdays - Higher Flo Rida || Choons: 0 Poons: 0
+2013-09-20-00:25:38 #hive365: <blha303> !dj
+2013-09-20-00:25:39 #hive365: <Hive365Test> blha303: Current DJ: The Bee Keeper :: Keepin Ya Buzzin' FTW's: 0 FTL's: 0
+2013-09-20-00:25:41 #hive365: <blha303> yeah
+2013-09-20-00:25:48 #hive365: <blha303> i'll push this fix
+2013-09-20-00:25:51 #hive365: <blha303> xD
