@@ -1,1 +1,1 @@
-twistd -y run.py
+pypy/bin/twistd -y run.py
